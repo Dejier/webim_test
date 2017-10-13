@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+	<style>
+		.content {
+			text-align: center;
+			
+		}
+		.btn_auth {
+			padding: 10px;
+			width: 100%;
+			cursor: pointer;
+			background: none;
+	    	background-color: #5e81a8;
+	    	color: #fff;
+	    	border: 1px solid grey;
+	    	border-radius: 2px;
+	    	box-sizing: border-box;
+		}
+		.btn_auth:hover {
+			background-color: #6888ad;
+		}
+		.inp_token {
+			width: 100%;
+			height: 20px;
+			padding-left: 5px;
+			border: 1px solid grey;
+			box-sizing: border-box;
+			margin-bottom: 10px;
+			
+		}
+		[hidden] {
+			display: none;
+		}
+		.content__auth, .content__users {
+			margin: 0 auto;
+			width: 300px;
+			
+		}
+		.top {
+			height:  auto;
+		}
+		img.profile {
+			width: 50px;
+			border-radius: 50%;
+		}
+		.top__name {
+
+		}
+		.top__title,.friends__title {
+			background-color: #5e81a8;
+	    	color: #fff;
+		}
+		.friends__user {
+			border-bottom: 1px solid #000;
+			padding: 5px;
+		}
+	</style>
+</head>
+<body>
+	<div class="content">
+		<div class="content__users" hidden id="main">
+			<div class="top">
+				<div class="top__title">Пользователь</div>
+				<span class="top__name"></span>
+				<img class="profile" src="">
+			</div>
+			<div class="friends__title">Друзья</div>
+			<div class="friends" id='list'>		
+			</div>
+		</div>
+		<div class="content__auth">
+				
+				<div>
+					<input type="text" class="inp_token" id="inp_token" placeholder="Access token"hidden>
+				</div>
+				<div>
+					<button class="btn_auth" onclick="userAuth()" id="btn_access" hidden>Авторизоваться через access token</button>
+				</div>
+				
+				<div>
+					<button class="btn_auth" onclick="enterAuth(this)" id="btn_login" hidden>Войти через ВКонтакте</button>
+				</div>
+				<div>
+					<button class="btn_auth" onclick="clearSession()" id="btn_logout" hidden>Выйти</button>
+				</div>
+		</div>
+	</div>
+</body>
+<script>
+	//6217922 - ID приложения
+	let access_token;
+	let users;
+	let tokenUrl = "https://oauth.vk.com/authorize?client_id=6217922&redirect_uri=https://oauth.vk.com/blank.html&scope=friends&response_type=token&display=page";
+	let getfriends = "https://api.vk.com/method/friends.get?count=5&order=random&fields=photo_50&access_token=";
+	let getCurUser = "https://api.vk.com/method/users.get?user_ids&fields=photo_50&access_token=";
+
+	function checkToken() {
+		if(localStorage.getItem('token')) {
+			access_token = localStorage.getItem('token');
+			console.log(access_token);
+			document.getElementById('main').removeAttribute('hidden');
+			document.getElementById('btn_logout').removeAttribute('hidden');
+			document.getElementById('btn_logout').removeAttribute('hidden');
+			loadProfile();
+			loadFriends();
+		} else {
+			enter();
+		}
+
+	}
+
+	
+	//JSONP
+	function loadFriends() {		
+		var script = document.createElement("script");
+		script.src = getfriends + access_token + "&callback=cbFunc";
+		document.body.appendChild(script);
+	}
+
+	function loadProfile() {
+		if(!localStorage.getItem('user')) {		
+			var script = document.createElement("script");
+			script.src = getCurUser + access_token + "&callback=cbProfile";
+			document.body.appendChild(script);
+		} else {
+			let user = JSON.parse(localStorage.getItem('user'));
+			document.querySelector('.top__name').innerText = user.first_name + " " + user.last_name;
+			document.querySelector('img.profile').src = user.photo_50;
+		}
+	}
+
+	function cbFunc(result) {
+		console.log('ответ получен');
+		showFriends(result.response);
+	}
+
+	function cbProfile(result) {
+		console.log(result.response[0]);
+		localStorage.setItem("user", JSON.stringify(result.response[0]));
+		loadProfile();
+	}
+
+	
+	function showFriends(friends) {
+		for(var i = 0; i < friends.length; i++) {
+			let elem = document.createElement('div');
+			elem.className = "friends__user";
+			elem.innerHTML = '<a href="https://vk.com/id' + friends[i].uid + '">' + friends[i].first_name + " " + friends[i].last_name + '</a>';
+			document.getElementById('list').appendChild(elem);
+		}
+	}
+	
+
+	function enter() {
+		document.getElementById('btn_login').removeAttribute('hidden');
+	}
+	function enterAuth(btn) {
+		window.open(tokenUrl);
+		btn.setAttribute('hidden','');
+		document.getElementById('btn_access').removeAttribute('hidden');
+		document.getElementById('inp_token').removeAttribute('hidden');
+		document.getElementById('inp_token').setAttribute('required','');
+	}
+
+	
+
+	function userAuth() {
+		let inpToken = document.getElementById('inp_token');
+		if(inpToken.value) {
+			localStorage.setItem('token', inpToken.value);
+			access_token = localStorage.getItem('token');
+			document.getElementById('btn_access').setAttribute('hidden','');
+			document.getElementById('inp_token').setAttribute('hidden','');
+			document.getElementById('main').removeAttribute('hidden');
+			loadProfile();
+			loadFriends();
+		} else {
+			inpToken.setAttribute('placeholder', 'Введите access_token');
+		}
+		
+	}
+
+	function clearSession() {
+		localStorage.removeItem('token');
+		localStorage.removeItem('user');
+		document.getElementById('list').innerHTML = '';
+		document.getElementById('main').setAttribute('hidden', '');
+		document.getElementById('btn_logout').setAttribute('hidden', '');
+		enter();
+	}
+
+	//проверяем наличие данных о пользователе в хранилище
+	checkToken();
+	
+</script>
+</html>
+
